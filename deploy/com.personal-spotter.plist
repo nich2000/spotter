@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.personal-spotter</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/spotter</string>
+    <string>-config</string>
+    <string>/usr/local/etc/spotter/config.yaml</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/spotter.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/spotter.err.log</string>
+</dict>
+</plist>

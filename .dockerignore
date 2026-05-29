@@ -1,0 +1,6 @@
+.git
+.cache
+data
+spotter
+assistant
+*.log

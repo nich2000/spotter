@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Personal Spotter</title>
+    <link rel="stylesheet" href="/style.css?v=3" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>Personal Spotter</h1>
+        <p id="today">-</p>
+      </div>
+      <div class="actions">
+        <span id="connection" class="status">SSE: connecting</span>
+        <button id="refresh" type="button">Обновить</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel plan">
+        <div class="panel-title">
+          <h2>План дня</h2>
+          <span id="updatedAt">-</span>
+        </div>
+        <p id="planSummary" class="summary">Данные загружаются.</p>
+        <div class="columns">
+          <div>
+            <h3>Блоки</h3>
+            <ul id="planBlocks"></ul>
+          </div>
+          <div>
+            <h3>Фокус</h3>
+            <ul id="planFocus"></ul>
+          </div>
+          <div>
+            <h3>Риски</h3>
+            <ul id="planRisks"></ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <button class="collapse-head" type="button" data-collapse-target="calendar" aria-expanded="false">
+          <span>Календарь</span>
+          <span class="head-meta"><span id="calendarCount">0</span><span class="chevron">⌄</span></span>
+        </button>
+        <div id="calendar" class="list collapsible-body" hidden></div>
+      </section>
+
+      <section class="panel">
+        <button class="collapse-head" type="button" data-collapse-target="reminders" aria-expanded="false">
+          <span>Напоминания</span>
+          <span class="head-meta"><span id="remindersCount">0</span><span class="chevron">⌄</span></span>
+        </button>
+        <div id="reminders" class="list collapsible-body" hidden></div>
+      </section>
+
+      <section class="panel">
+        <button class="collapse-head" type="button" data-collapse-target="mail" aria-expanded="false">
+          <span>Почта</span>
+          <span class="head-meta"><span id="mailCount">0</span><span class="chevron">⌄</span></span>
+        </button>
+        <div id="mail" class="list collapsible-body" hidden></div>
+      </section>
+
+      <section class="panel">
+        <button class="collapse-head" type="button" data-collapse-target="notes" aria-expanded="false">
+          <span>Заметки</span>
+          <span class="head-meta"><span id="notesCount">0</span><span class="chevron">⌄</span></span>
+        </button>
+        <div id="notes" class="list collapsible-body" hidden></div>
+      </section>
+
+      <section class="panel sources">
+        <h2>Источники</h2>
+        <div id="sources" class="source-grid"></div>
+      </section>
+    </main>
+
+    <script src="/app.js?v=3"></script>
+  </body>
+</html>

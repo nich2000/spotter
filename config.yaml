@@ -1,0 +1,25 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+refresh:
+  interval_seconds: 300
+daily_plan:
+  enabled: true
+  time: "07:30"
+openai:
+  enabled: true
+  # Set the API key through the OPENAI_API_KEY environment variable.
+  model: "gpt-5.2"
+  timeout_seconds: 30
+mail:
+  limit: 20
+notes:
+  folder: "Notes"
+storage:
+  file: "./data/state.json"
+scripts:
+  timeout_seconds: 30
+  calendar: "./scripts/calendar_export.scpt"
+  reminders: "./scripts/reminders_export.scpt"
+  mail: "./scripts/mail_inbox.scpt"
+  notes: "./scripts/notes_export.scpt"
