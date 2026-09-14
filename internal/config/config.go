@@ -36,6 +36,7 @@ type DailyPlanConfig struct {
 
 type OpenAIConfig struct {
 	Enabled        bool   `yaml:"enabled"`
+	BaseURL        string `yaml:"base_url"`
 	Model          string `yaml:"model"`
 	TimeoutSeconds int    `yaml:"timeout_seconds"`
 }
@@ -49,7 +50,8 @@ type NotesConfig struct {
 }
 
 type StorageConfig struct {
-	File string `yaml:"file"`
+	File      string `yaml:"file"`
+	AuditFile string `yaml:"audit_file"`
 }
 
 type ScriptsConfig struct {
@@ -76,12 +78,12 @@ func Load(path string) (Config, error) {
 func Default() Config {
 	cfg := Config{
 		Server:    ServerConfig{Host: "127.0.0.1", Port: 8080},
-		Refresh:   RefreshConfig{IntervalSeconds: 300},
+		Refresh:   RefreshConfig{IntervalSeconds: 7200},
 		DailyPlan: DailyPlanConfig{Enabled: true, Time: "07:30"},
-		OpenAI:    OpenAIConfig{Enabled: false, Model: "gpt-5.2", TimeoutSeconds: 30},
+		OpenAI:    OpenAIConfig{Enabled: false, BaseURL: "https://api.openai.com/v1", Model: "gpt-5.2", TimeoutSeconds: 30},
 		Mail:      MailConfig{Limit: 20},
 		Notes:     NotesConfig{Folder: "Notes"},
-		Storage:   StorageConfig{File: "./data/state.json"},
+		Storage:   StorageConfig{File: "./data/state.json", AuditFile: "./data/refresh_log.jsonl"},
 		Scripts: ScriptsConfig{
 			TimeoutSeconds: 30,
 			Calendar:       "./scripts/calendar_export.scpt",
@@ -110,6 +112,9 @@ func (c *Config) applyDefaults() {
 	if c.OpenAI.Model == "" {
 		c.OpenAI.Model = def.OpenAI.Model
 	}
+	if c.OpenAI.BaseURL == "" {
+		c.OpenAI.BaseURL = def.OpenAI.BaseURL
+	}
 	if c.OpenAI.TimeoutSeconds <= 0 {
 		c.OpenAI.TimeoutSeconds = def.OpenAI.TimeoutSeconds
 	}
@@ -121,6 +126,9 @@ func (c *Config) applyDefaults() {
 	}
 	if c.Storage.File == "" {
 		c.Storage.File = def.Storage.File
+	}
+	if c.Storage.AuditFile == "" {
+		c.Storage.AuditFile = def.Storage.AuditFile
 	}
 	if c.Scripts.TimeoutSeconds <= 0 {
 		c.Scripts.TimeoutSeconds = def.Scripts.TimeoutSeconds
@@ -231,6 +239,8 @@ func setValue(cfg *Config, section, key, value string) error {
 				return fmt.Errorf("invalid openai.enabled: %w", err)
 			}
 			cfg.OpenAI.Enabled = enabled
+		case "base_url":
+			cfg.OpenAI.BaseURL = value
 		case "model":
 			cfg.OpenAI.Model = value
 		case "timeout_seconds":
@@ -253,8 +263,11 @@ func setValue(cfg *Config, section, key, value string) error {
 			cfg.Notes.Folder = value
 		}
 	case "storage":
-		if key == "file" {
+		switch key {
+		case "file":
 			cfg.Storage.File = value
+		case "audit_file":
+			cfg.Storage.AuditFile = value
 		}
 	case "scripts":
 		switch key {

@@ -35,13 +35,34 @@ on twoDigits(value)
 	return numberValue as text
 end twoDigits
 
+on readyCalendars()
+	-- LaunchServices can start Calendar when its AppleEvent launch command fails (-600).
+	try
+		do shell script "/usr/bin/open -g -b com.apple.iCal"
+	on error errorMessage number errorNumber
+		error "Calendar startup failed (LaunchServices): " & errorMessage number errorNumber
+	end try
+
+	repeat with attempt from 1 to 20
+		try
+			tell application id "com.apple.iCal" to return every calendar
+		on error errorMessage number errorNumber
+			-- Retry only the transient 'application is not running' error.
+			if errorNumber is not -600 then error "Calendar readiness failed: " & errorMessage number errorNumber
+			if attempt is 20 then error "Calendar did not become ready after 20 attempts: " & errorMessage number errorNumber
+			delay 0.5
+		end try
+	end repeat
+end readyCalendars
+
 on run argv
 	set todayStart to date (item 1 of argv)
 	set rangeEnd to date (item 2 of argv)
 	set rows to {}
+	set availableCalendars to my readyCalendars()
 	
-	tell application "Calendar"
-		repeat with cal in calendars
+	tell application id "com.apple.iCal"
+		repeat with cal in availableCalendars
 			set calName to name of cal
 			if calName is "Scheduled Reminders" then
 				set skipCalendar to true
@@ -51,7 +72,7 @@ on run argv
 			if skipCalendar then
 				-- Reminders due dates are rendered by the Reminders source.
 			else
-			repeat with ev in (every event of cal whose start date >= todayStart and start date < rangeEnd)
+			repeat with ev in (every event of cal whose end date > todayStart and start date < rangeEnd)
 				set eventTitle to summary of ev
 				set eventStart to (start date of ev) as date
 				set eventEnd to (end date of ev) as date

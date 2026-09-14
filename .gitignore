@@ -1,4 +1,13 @@
 .cache/
-spotter
+.env
+/spotter
 data/state.json
+data/refresh_log.jsonl
 *.log
+
+# Local task decisions and health aggregates
+*.workspace.json
+health.json
+
+# macOS Finder metadata
+.DS_Store

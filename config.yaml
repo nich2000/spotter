@@ -2,21 +2,23 @@ server:
   host: "127.0.0.1"
   port: 8080
 refresh:
-  interval_seconds: 300
+  interval_seconds: 7200
 daily_plan:
   enabled: true
   time: "07:30"
 openai:
   enabled: true
-  # Set the API key through the OPENAI_API_KEY environment variable.
-  model: "gpt-5.2"
-  timeout_seconds: 30
+  # Ollama ignores the API key value, but the client requires OPENAI_API_KEY to be set.
+  base_url: "http://localhost:11434/v1"
+  model: "qwen3:4b"
+  timeout_seconds: 60
 mail:
   limit: 20
 notes:
   folder: "Notes"
 storage:
   file: "./data/state.json"
+  audit_file: "./data/refresh_log.jsonl"
 scripts:
   timeout_seconds: 30
   calendar: "./scripts/calendar_export.scpt"

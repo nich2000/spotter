@@ -6,14 +6,18 @@ import (
 	"net/http"
 
 	"spotter/internal/app"
+	"spotter/internal/planner"
 	"spotter/internal/sse"
+	"spotter/internal/workspace"
 )
 
 type Server struct {
-	logger *slog.Logger
-	app    *app.App
-	broker *sse.Broker
-	static http.Handler
+	workspace    *workspace.Service
+	healthBridge *workspace.Bridge
+	logger       *slog.Logger
+	app          *app.App
+	broker       *sse.Broker
+	static       http.Handler
 }
 
 func New(logger *slog.Logger, app *app.App, broker *sse.Broker) *Server {
@@ -29,6 +33,8 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/events", s.broker.Handler)
 	mux.HandleFunc("/api/state", s.handleState)
+	mux.HandleFunc("/api/workspace", s.handleWorkspace)
+	mux.HandleFunc("/api/focus.ics", s.handleCalendarExport)
 	mux.HandleFunc("/api/refresh", s.handleRefresh)
 	mux.Handle("/", s.static)
 	return logRequests(s.logger, localOnly(mux))
@@ -47,7 +53,7 @@ func (s *Server) handleRefresh(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	writeJSON(w, s.app.Refresh(r.Context()))
+	writeJSON(w, s.app.Refresh(planner.WithTrigger(r.Context(), "manual_http")))
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

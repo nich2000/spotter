@@ -2,6 +2,7 @@ package planner
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"time"
@@ -9,8 +10,55 @@ import (
 	"spotter/internal/model"
 )
 
+type SourceSummarizer interface {
+	SummarizeSource(context.Context, string, model.SourceData, time.Time) (model.SourceSummary, Trace)
+}
+
 type Planner interface {
 	Generate(ctx context.Context, input model.AppState) (model.DailyPlan, error)
+}
+
+type Trace struct {
+	Source       string          `json:"source,omitempty"`
+	Endpoint     string          `json:"endpoint,omitempty"`
+	TimeoutMS    int64           `json:"timeoutMs,omitempty"`
+	Request      json.RawMessage `json:"request,omitempty"`
+	ResponseBody string          `json:"responseBody,omitempty"`
+
+	OperationID     string `json:"operationId,omitempty"`
+	Backend         string `json:"backend,omitempty"`
+	Status          string `json:"status,omitempty"`
+	Stage           string `json:"stage,omitempty"`
+	DurationMS      int64  `json:"durationMs"`
+	HTTPStatus      int    `json:"httpStatus,omitempty"`
+	DoneReason      string `json:"doneReason,omitempty"`
+	PromptTokens    int    `json:"promptTokens,omitempty"`
+	OutputTokens    int    `json:"outputTokens,omitempty"`
+	TotalDurationNS int64  `json:"totalDurationNs,omitempty"`
+	LoadDurationNS  int64  `json:"loadDurationNs,omitempty"`
+	EvalDurationNS  int64  `json:"evalDurationNs,omitempty"`
+
+	Model    string `json:"model,omitempty"`
+	Prompt   string `json:"prompt,omitempty"`
+	Response string `json:"response,omitempty"`
+	Error    string `json:"error,omitempty"`
+}
+
+type TracingPlanner interface {
+	GenerateTrace(ctx context.Context, input model.AppState) (model.DailyPlan, Trace, error)
+}
+
+func GenerateWithTrace(ctx context.Context, planner Planner, input model.AppState) (model.DailyPlan, Trace, error) {
+	if tracing, ok := planner.(TracingPlanner); ok {
+		return tracing.GenerateTrace(ctx, input)
+	}
+	plan, err := planner.Generate(ctx, input)
+	trace := Trace{OperationID: OperationID(ctx), Backend: fmt.Sprintf("%T", planner), Status: "ok"}
+	if err != nil {
+		trace.Status = "failed"
+		trace.Error = err.Error()
+	}
+	return plan, trace, err
 }
 
 type RuleBased struct {

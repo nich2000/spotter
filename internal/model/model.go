@@ -20,6 +20,7 @@ type Reminder struct {
 }
 
 type MailMessage struct {
+	ID       int       `json:"id,omitempty"`
 	Subject  string    `json:"subject"`
 	Sender   string    `json:"sender"`
 	Date     time.Time `json:"date"`
@@ -36,13 +37,27 @@ type Note struct {
 }
 
 type SourceData struct {
-	Calendar  []CalendarEvent `json:"calendar,omitempty"`
-	Reminders []Reminder      `json:"reminders,omitempty"`
-	Mail      []MailMessage   `json:"mail,omitempty"`
-	Notes     []Note          `json:"notes,omitempty"`
+	CalendarFrom time.Time       `json:"calendarFrom,omitempty"`
+	CalendarTo   time.Time       `json:"calendarTo,omitempty"`
+	Calendar     []CalendarEvent `json:"calendar,omitempty"`
+	Reminders    []Reminder      `json:"reminders,omitempty"`
+	Mail         []MailMessage   `json:"mail,omitempty"`
+	Notes        []Note          `json:"notes,omitempty"`
+}
+
+type SourceSummary struct {
+	Name        string    `json:"name"`
+	Status      string    `json:"status"`
+	Error       string    `json:"error,omitempty"`
+	GeneratedAt time.Time `json:"generatedAt"`
+	Content     DailyPlan `json:"content"`
 }
 
 type AppState struct {
+	CalendarFrom    time.Time       `json:"calendarFrom,omitempty"`
+	CalendarTo      time.Time       `json:"calendarTo,omitempty"`
+	SourceSummaries []SourceSummary `json:"sourceSummaries,omitempty"`
+
 	GeneratedAt time.Time       `json:"generatedAt"`
 	Calendar    []CalendarEvent `json:"calendar"`
 	Reminders   []Reminder      `json:"reminders"`

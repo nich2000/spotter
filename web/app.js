@@ -44,16 +44,39 @@ function renderState(state) {
     : 'Ещё не обновлялось';
 
   document.getElementById('planSummary').textContent = state.plan?.summary || 'План пока не сформирован.';
-  renderBullets('planBlocks', state.plan?.blocks, 'Нет временных блоков');
-  renderBullets('planFocus', state.plan?.focus, 'Нет фокуса');
-  renderBullets('planRisks', state.plan?.risks, 'Нет рисков');
+  renderBullets('planBlocks', state.plan?.blocks, 'Временные блоки пока не запланированы');
+  renderBullets('planFocus', state.plan?.focus, 'Приоритеты появятся после формирования плана');
+  renderBullets('planRisks', state.plan?.risks, 'План не содержит предупреждений');
+  // The current backend includes planner diagnostics in the risks array.
+  document.querySelectorAll('#planRisks li').forEach((item) => {
+    if (/^parse plan json:/i.test(item.textContent)) {
+      const detail = item.textContent;
+      item.innerHTML = `Не удалось сформировать рекомендации.<details><summary>Технические подробности</summary><p>${escapeHTML(detail)}</p></details>`;
+    }
+  });
 
   renderList('calendar', state.calendar, renderCalendar, 'Событий нет');
   renderList('reminders', state.reminders, renderReminder, 'Активных напоминаний нет');
   renderList('mail', state.mail, renderMail, 'Непрочитанных писем нет');
   renderList('notes', state.notes, renderNote, 'Заметок нет');
+  for (const name of ['calendar', 'reminders', 'mail', 'notes']) {
+    const list = document.getElementById(name);
+    let node = document.getElementById(`${name}Summary`);
+    if (!node) {
+      node = document.createElement('div');
+      node.id = `${name}Summary`;
+      node.className = 'source-summary';
+      list.before(node);
+    }
+    const summary = state.sourceSummaries?.find(item => item.name === name);
+    node.hidden = !summary;
+    node.textContent = summary ? (summary.status === 'ok'
+      ? `Выжимка: ${summary.content.summary}`
+      : `Выжимка недоступна: ${summary.error || summary.status}`) : '';
+  }
   renderCounts(state);
   renderSources(state.sources || []);
+  window.dispatchEvent(new Event('spotter:state'));
 }
 
 function renderCounts(state) {
@@ -105,7 +128,7 @@ function renderReminder(item) {
 
 function renderMail(item) {
   const date = parseDate(item.date);
-  const unread = item.isUnread ? '<span class="badge">unread</span>' : '';
+  const unread = item.isUnread ? '<span class="badge">Новое</span>' : '';
   return `<article class="item">
     <div class="item-main">
       <strong>${escapeHTML(item.subject || '(без темы)')} ${unread}</strong>
@@ -131,8 +154,8 @@ function renderSources(sources) {
   node.innerHTML = sources.length ? sources.map((source) => {
     const updated = parseDate(source.updatedAt);
     return `<div class="source ${source.ok ? 'ok' : 'fail'}">
-      <div><strong>${escapeHTML(source.name)}</strong><span>${source.ok ? 'OK' : 'ERROR'}</span></div>
-      <p>${escapeHTML(source.error || (updated ? formatDateTime.format(updated) : ''))}</p>
+      <div><strong>${escapeHTML(({calendar: 'Календарь', reminders: 'Напоминания', mail: 'Почта', notes: 'Заметки'})[source.name] || source.name)}</strong><span>${source.ok ? '● Доступен' : '● Ошибка'}</span></div>
+      <p>${updated ? escapeHTML(formatDateTime.format(updated)) : 'Ещё не обновлялось'}</p>${source.error ? `<details><summary>Подробнее об ошибке</summary><p>${escapeHTML(source.error)}</p></details>` : ''}
     </div>`;
   }).join('') : empty('Статусы источников пока недоступны');
 }
@@ -148,10 +171,14 @@ document.getElementById('refresh').addEventListener('click', async () => {
   const originalText = button.textContent;
   button.disabled = true;
   button.textContent = 'Обновляю источники и план...';
+  document.getElementById('feedback').hidden = true;
   try {
     const response = await fetch('/api/refresh', { method: 'POST' });
     if (!response.ok) throw new Error(`refresh request failed: ${response.status}`);
     renderState(await response.json());
+  } catch (error) {
+    showFeedback('Не удалось обновить данные. Попробуйте ещё раз.');
+    console.error(error);
   } finally {
     button.textContent = originalText;
     button.disabled = false;
@@ -170,14 +197,34 @@ document.querySelectorAll('[data-collapse-target]').forEach((button) => {
   });
 });
 
-loadState().catch(console.error);
+function showFeedback(message) {
+  const node = document.getElementById('feedback');
+  node.textContent = message;
+  node.hidden = false;
+}
+
+document.getElementById('today').textContent = new Intl.DateTimeFormat('ru-RU', {
+  weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+}).format(new Date());
+
+loadState().catch((error) => {
+  showFeedback('Не удалось загрузить данные. Нажмите «Обновить», чтобы повторить.');
+  document.getElementById('updatedAt').textContent = 'Данные не загружены';
+  document.getElementById('planSummary').textContent = 'Данные пока недоступны.';
+  ['planFocus', 'planBlocks', 'planRisks'].forEach((id) => renderBullets(id, [], 'Нет загруженных данных'));
+  ['calendar', 'reminders', 'mail', 'notes'].forEach((id) => renderList(id, [], null, 'Нет загруженных данных'));
+  renderSources([]);
+  console.error(error);
+});
 
 const events = new EventSource('/events');
 events.addEventListener('open', () => {
-  document.getElementById('connection').textContent = 'SSE: online';
+  document.getElementById('connection').textContent = 'На связи';
+  document.getElementById('connection').dataset.state = 'online';
 });
 events.addEventListener('error', () => {
-  document.getElementById('connection').textContent = 'SSE: reconnecting';
+  document.getElementById('connection').textContent = 'Восстанавливаем связь';
+  document.getElementById('connection').dataset.state = 'reconnecting';
 });
 events.addEventListener('update', (event) => {
   renderState(JSON.parse(event.data));

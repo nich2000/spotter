@@ -1,84 +1,66 @@
 <!doctype html>
 <html lang="ru">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Personal Spotter</title>
-    <link rel="stylesheet" href="/style.css?v=3" />
-  </head>
-  <body>
-    <header class="topbar">
-      <div>
-        <h1>Personal Spotter</h1>
-        <p id="today">-</p>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f6f8" />
+  <title>Personal Spotter · Сегодня</title>
+  <link rel="stylesheet" href="/style.css?v=7" />
+</head>
+<body>
+  <a class="skip-link" href="#main">К содержимому</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Personal Spotter — главная"><span class="brand-mark" aria-hidden="true">s<span>•</span></span><span>Personal Spotter<small>Ваш день в одном месте</small></span></a>
+    <div class="actions"><span id="connection" class="status" role="status">Подключаемся</span><button id="refresh" type="button">Обновить</button></div>
+  </header>
+  <main id="main" class="layout">
+    <div class="page-heading"><div><p class="eyebrow">ЛИЧНЫЙ ОБЗОР</p><h1>Сегодня</h1><p id="today">Загружаем дату…</p></div><span id="updatedAt" class="muted">Загружаем данные…</span></div>
+    <p id="feedback" class="feedback" role="status" hidden></p>
+<section id="workspace" class="workspace" aria-label="Управление временем">
+  <div class="work-toolbar"><nav class="work-tabs" aria-label="Разделы планирования"><button type="button" data-view="day" aria-pressed="true">Мой день</button><button type="button" data-view="inbox" aria-pressed="false">Inbox <span id="inboxTotal">—</span></button><button type="button" data-view="board" aria-pressed="false">Проекты и задачи</button><button type="button" data-view="review" aria-pressed="false">Обзор недели</button></nav><label class="date-label">Дата плана <input id="workDate" type="date" required></label></div>
+  <p id="workFeedback" class="feedback" role="status" hidden></p>
+  <form id="captureForm" class="capture-form"><label class="sr-only" for="captureTitle">Новая задача или идея</label><input id="captureTitle" name="title" maxlength="500" placeholder="Новая идея? Запишите и вернитесь к фокусу…" required><button type="submit" class="primary">В Inbox</button></form>
+  <div data-work-view="day">
+    <section class="panel day-primary"><div class="section-title"><h2>Главный результат</h2><button type="button" id="chooseDaily">Выбрать результат</button></div><p class="helper">Один результат, который сделает этот день успешным. Остальное — по свободному времени.</p><div id="mitTasks"></div>
+      <div id="focusSession" class="focus-session" hidden><strong id="focusName"></strong><p id="focusClock" role="timer"></p><button type="button" id="stopFocus">Закончить сессию</button><p class="helper">Таймер не завершает задачу. Сохраните следующий шаг в карточке.</p></div>
+      <details id="dailyPicker"><summary>Выбрать из подготовленных задач</summary><div id="dailyChoices"></div></details>
+    </section>
+    <div class="work-metrics" id="workMetrics"></div>
+    <section class="panel day-secondary"><h2>Дополнительно, если останется время</h2><div id="extraTasks"></div></section>
+    <section class="panel schedule-panel"><h2>Ожидания</h2><div id="waitingTasks"></div></section>
+    <div class="day-close task-actions"><button type="button" id="planTomorrow">Запланировать завтра</button><button type="button" data-view="review">Подвести итог</button></div>
+    <section class="panel schedule-panel"><div class="section-title"><h2>Предложение по времени</h2><a id="exportFocus" href="/api/focus.ics">Экспортировать предложение (.ics)</a></div><p class="helper">Эти блоки ещё не забронированы. Экспорт не подтверждает импорт в календарь. После импорта обновите источники; изменения задач не переносятся в календарь автоматически.</p><div id="scheduleWarnings" role="status"></div><div id="workSchedule"></div></section>
+  </div>
+  <div data-work-view="inbox" hidden><section class="panel"><h2>Разобрать входящее</h2><p class="helper">Уточните физически выполнимое действие, проект и оценку времени. Проект необязателен для разового дела; идеи можно отложить.</p><div id="inboxTasks"></div></section><section class="panel schedule-panel"><h2>Предложения из источников <span id="candidateCount"></span></h2><p class="helper">Это ещё не ваши задачи. Добавьте нужное или пропустите; оригиналы сохраняются.</p><div class="filter-row"><label>Источник <select id="candidateSource"><option value="">Все</option><option value="reminders">Напоминания</option><option value="mail">Почта</option><option value="notes">Заметки</option><option value="calendar">Календарь</option></select></label></div><div id="candidates" class="candidate-list"></div><button type="button" id="restoreCandidates" hidden>Вернуть пропущенные предложения</button></section></div>
+  <div data-work-view="board" hidden><div class="filter-row"><label>Проект <select id="projectFilter"><option value="">Все проекты</option></select></label><p class="helper">В работе + ожидание ≤ 3 · Подготовлено ≤ 15 · На неделю до 5 результатов</p></div><div id="kanban" class="kanban"></div></div>
+  <div data-work-view="review" hidden><div class="columns"><section class="panel"><h2>Итоги и решения</h2><p id="lastReview" class="helper"></p><form id="reviewForm"><p class="helper">Что завершено? Что мешало? Что продолжить, отложить или больше не начинать? Двух основных проектов на неделю достаточно для старта.</p><div id="reviewDecisions"></div><label>Итоги и решения <textarea name="results" maxlength="4000" rows="4" placeholder="Что завершить, что отложить, чего не начинать"></textarea></label><button class="primary" type="submit">Сохранить обзор</button></form></section><section class="panel"><h2>Приоритеты недели</h2><div id="weeklyTasks"></div><h3 class="review-heading">Активные проекты без следующего действия</h3><div id="projectWarnings"></div></section></div></div>
+  <details class="work-settings panel"><summary>Самочувствие и нагрузка</summary><label>Нагрузка на выбранный день <select id="energy"><option value="normal">Обычная</option><option value="low">Бережная</option><option value="auto">По данным сна</option></select></label><p id="energyReason" class="helper"></p><details><summary>Данные сна и подключение iPhone</summary><div id="healthState"></div><p id="healthBridge" class="helper"></p><a href="/health-setup.html" target="_blank" rel="noopener">Настройка подключения iPhone ↗</a></details></details>
+  <details class="work-settings panel"><summary>Настройки рабочего дня</summary><form id="settingsForm" class="settings-grid"><label>Начало <input name="start" type="time" required></label><label>Конец <input name="end" type="time" required></label><label>Часовой пояс <input name="zone" placeholder="Europe/Moscow" required></label><label>Резерв, % <input name="reserve" type="number" min="20" max="30" required></label><label>Блок фокуса, мин <input name="block" type="number" min="30" max="120" required></label><label>Перерыв, мин <input name="break" type="number" min="10" max="20" required></label><label>Личная цель сна, ч <input name="sleepTarget" type="number" min="4" max="12" step="0.5" required></label><button type="submit" class="primary">Сохранить настройки</button></form></details>
+</section>
+<dialog id="taskDialog"><form id="taskForm"><div class="section-title"><h2>Следующее действие</h2><button type="button" id="closeTask" aria-label="Закрыть">×</button></div><input name="id" type="hidden"><label>Конкретный результат <input name="title" maxlength="500" required></label><label>Проект <input name="project" list="projectNames" maxlength="120" placeholder="Например: собрать и проверить стенд (необязательно)"></label><datalist id="projectNames"></datalist><div class="settings-grid"><label>Оценка, мин <input name="minutes" type="number" min="15" max="480" step="15" required></label><label>Статус <select name="status"><option value="inbox">Inbox</option><option value="backlog">Отложено</option><option value="ready">Подготовлено</option><option value="doing">В работе</option><option value="waiting">Ожидание</option><option value="done">Готово</option></select></label></div><label>Заметка для возвращения <textarea name="resume" rows="3" maxlength="4000" placeholder="Где остановился, ссылка на код или лог, следующая проверка"></textarea></label><div class="settings-grid"><label>Что или кого ждём <input name="waitingOn" maxlength="500"></label><label>Проверить ожидание <input name="checkDate" type="date"></label></div><label><input name="mit" type="checkbox"> В плане на <span id="mitDateLabel"></span></label><label><input name="weekly" type="checkbox"> Результат этой недели</label><p id="taskError" role="alert"></p><button type="submit" class="primary">Сохранить</button></form></dialog>
+
+    <details class="source-overview"><summary>Обзор исходных данных и выжимка модели</summary>
+    <section class="panel plan-summary" aria-labelledby="planTitle">
+      <div class="plan-intro"><span class="eyebrow">ОБЩАЯ КАРТИНА</span><h2 id="planTitle">Выжимка источников</h2><p id="planSummary" class="summary" aria-live="polite">Собираем ваш день…</p></div>
+      <div class="focus"><h3><span class="focus-dot" aria-hidden="true"></span>Предложения модели</h3><ul id="planFocus"><li class="muted">Загружаем рекомендации…</li></ul></div>
+    </section>
+    <div class="columns">
+      <div class="column">
+        <section class="panel"><div class="section-title"><h2>Ритм дня</h2><span class="section-caption">Временные блоки</span></div><ul id="planBlocks" class="timeline"><li class="muted">Загружаем план…</li></ul></section>
+        <section class="panel"><button class="collapse-head" type="button" data-collapse-target="calendar" aria-controls="calendar" aria-expanded="true"><span>Календарь</span><span class="head-meta"><span id="calendarCount">—</span><span class="chevron">⌄</span></span></button><div id="calendar" class="list collapsible-body"></div></section>
+        <section class="panel risk-panel"><button class="collapse-head" type="button" data-collapse-target="planRisks" aria-controls="planRisks" aria-expanded="true"><span>На что обратить внимание</span><span class="chevron">⌄</span></button><ul id="planRisks" class="collapsible-body risk-list"></ul></section>
       </div>
-      <div class="actions">
-        <span id="connection" class="status">SSE: connecting</span>
-        <button id="refresh" type="button">Обновить</button>
+      <div class="column">
+        <section class="panel"><button class="collapse-head" type="button" data-collapse-target="reminders" aria-controls="reminders" aria-expanded="true"><span>Напоминания</span><span class="head-meta"><span id="remindersCount">—</span><span class="chevron">⌄</span></span></button><div id="reminders" class="list collapsible-body"></div></section>
+        <section class="panel"><button class="collapse-head" type="button" data-collapse-target="mail" aria-controls="mail" aria-expanded="false"><span>Почта</span><span class="head-meta"><span id="mailCount">—</span><span class="chevron">⌄</span></span></button><div id="mail" class="list collapsible-body" hidden></div></section>
+        <section class="panel"><button class="collapse-head" type="button" data-collapse-target="notes" aria-controls="notes" aria-expanded="false"><span>Заметки</span><span class="head-meta"><span id="notesCount">—</span><span class="chevron">⌄</span></span></button><div id="notes" class="list collapsible-body" hidden></div></section>
       </div>
-    </header>
-
-    <main class="layout">
-      <section class="panel plan">
-        <div class="panel-title">
-          <h2>План дня</h2>
-          <span id="updatedAt">-</span>
-        </div>
-        <p id="planSummary" class="summary">Данные загружаются.</p>
-        <div class="columns">
-          <div>
-            <h3>Блоки</h3>
-            <ul id="planBlocks"></ul>
-          </div>
-          <div>
-            <h3>Фокус</h3>
-            <ul id="planFocus"></ul>
-          </div>
-          <div>
-            <h3>Риски</h3>
-            <ul id="planRisks"></ul>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel">
-        <button class="collapse-head" type="button" data-collapse-target="calendar" aria-expanded="false">
-          <span>Календарь</span>
-          <span class="head-meta"><span id="calendarCount">0</span><span class="chevron">⌄</span></span>
-        </button>
-        <div id="calendar" class="list collapsible-body" hidden></div>
-      </section>
-
-      <section class="panel">
-        <button class="collapse-head" type="button" data-collapse-target="reminders" aria-expanded="false">
-          <span>Напоминания</span>
-          <span class="head-meta"><span id="remindersCount">0</span><span class="chevron">⌄</span></span>
-        </button>
-        <div id="reminders" class="list collapsible-body" hidden></div>
-      </section>
-
-      <section class="panel">
-        <button class="collapse-head" type="button" data-collapse-target="mail" aria-expanded="false">
-          <span>Почта</span>
-          <span class="head-meta"><span id="mailCount">0</span><span class="chevron">⌄</span></span>
-        </button>
-        <div id="mail" class="list collapsible-body" hidden></div>
-      </section>
-
-      <section class="panel">
-        <button class="collapse-head" type="button" data-collapse-target="notes" aria-expanded="false">
-          <span>Заметки</span>
-          <span class="head-meta"><span id="notesCount">0</span><span class="chevron">⌄</span></span>
-        </button>
-        <div id="notes" class="list collapsible-body" hidden></div>
-      </section>
-
-      <section class="panel sources">
-        <h2>Источники</h2>
-        <div id="sources" class="source-grid"></div>
-      </section>
-    </main>
-
-    <script src="/app.js?v=3"></script>
-  </body>
+    </div>
+    <section class="sources" aria-labelledby="sourcesTitle"><div class="section-title"><h2 id="sourcesTitle">Состояние источников</h2><span class="section-caption">Синхронизация данных</span></div><div id="sources" class="source-grid"></div></section>
+    </details>
+    <footer>Personal Spotter <span>Меньше шума. Больше внимания важному.</span></footer>
+  </main>
+  <script src="/app.js?v=6"></script>
+  <script src="/workspace.js?v=2"></script>
+</body>
 </html>
