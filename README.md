@@ -2,6 +2,8 @@
 
 Personal Spotter — локальный персональный ассистент для macOS, который агрегирует данные из Calendar, Reminders, Mail и Notes, формирует ежедневную сводку и отображает актуальную информацию через локальный веб-интерфейс в режиме реального времени.
 
+План развития существующего решения: [единое ТЗ на доработку, тестирование и развёртывание](docs/development-spec.md). Документ связывает действующие спецификации, задаёт пакеты работ для параллельной разработки и критерии приёмки; целевая архитектура ещё не является текущей реализацией.
+
 The server runs locally and reads macOS sources through AppleScript without screenshots or OCR. Optional recommendations use the configured model endpoint: the checked-in configuration targets local Ollama; selecting a hosted endpoint sends source content to that service. Workspace decisions and sleep aggregates remain separate from model inputs.
 
 ## Requirements
