@@ -1,0 +1,29 @@
+services:
+  nats-test:
+    image: nats:2.11.8-alpine
+    command: ['-js']
+    networks: [backend]
+    profiles: [test]
+  test:
+    image: golang:1.26.3-alpine
+    working_dir: /src
+    volumes:
+      - .:/src:ro
+      - test-go-mod:/go/pkg/mod
+      - test-go-cache:/root/.cache/go-build
+    environment:
+      SPOTTER_TEST_DATABASE: postgres://spotter:${POSTGRES_PASSWORD}@postgres:5432/spotter
+      SPOTTER_TEST_NATS: nats://nats-test:4222
+      S3_ENDPOINT: minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    command: ['go', 'test', '-tags=integration', '-run=TestIntegration', '-count=1', '-v', './internal/platform']
+    depends_on:
+      postgres: {condition: service_healthy}
+      nats-test: {condition: service_started}
+      minio: {condition: service_started}
+    networks: [backend]
+    profiles: [test]
+volumes:
+  test-go-mod:
+  test-go-cache:

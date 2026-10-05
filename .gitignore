@@ -11,3 +11,8 @@ health.json
 
 # macOS Finder metadata
 .DS_Store
+.env.docker
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+coverage.out

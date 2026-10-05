@@ -1,15 +1,53 @@
 # Personal Spotter
 
+**Spotter - личное рабочее пространство.**
+
+Официальное название продукта — **Personal Spotter**. Правила использования названия и слогана закреплены в [общем каркасе проекта](docs/project-spec.md#название-и-слоган).
+
+## Docker-версия v2 (локальный стенд, релиз 2.1.1)
+
+Интерфейс: **http://localhost:18080**. Версия интерфейса берётся из `frontend/package.json` и включается в bundle при сборке; серверная CLI не имеет флага `-version`. Go API и worker работают в Docker с PostgreSQL, NATS JetStream и MinIO; источники macOS читает отдельный native helper. Реализованный объём и границы приёмки описаны в [отчёте](docs/delivery/implementation.md).
+
+Для запуска нужны Docker с Compose v2 и Python 3 (создание `.env.docker`); для native helper — macOS и Go 1.23+. Dockerfile собирает React frontend на Node 22.19.0 и `cmd/spotter-server` на Go 1.26.3. Роли API/worker/migrate используют один образ; PostgreSQL, NATS JetStream и MinIO имеют отдельные тома.
+
+```bash
+./scripts/setup_local.sh
+docker compose --env-file .env.docker up -d --build
+```
+
+При первом входе создайте пароль владельца. В «Настройки → MacBook» получите одноразовый код сопряжения и на Mac выполните `./run_helper.sh` (нужен Go 1.23+). Введите код, а не пароль владельца. Код действует пять минут. macOS может запросить разрешения на Calendar, Reminders, Mail и Notes. Повторный запуск использует сохранённый в Keychain токен. Передача здоровья выключена до явного согласия в настройках.
+
+Проверки:
+
+```bash
+go test -race -count=1 -coverprofile=/tmp/spotter.cover ./...
+go tool cover -func=/tmp/spotter.cover
+go vet ./...
+node --test tests/workspace.test.cjs
+cd frontend
+npm ci
+npm test
+npm run build
+cd ..
+docker compose --env-file .env.docker -f compose.yaml -f compose.test.yaml --profile test run --rm test
+```
+
+Интеграционный тест использует отдельную SQL-схему, NATS и S3 bucket; данные владельца не меняет. `docker compose --env-file .env.docker down` останавливает стенд, сохраняя тома. Не добавляйте `-v`, если нужно сохранить данные. `.env.docker` содержит локальные секреты и не входит в Git.
+
+Проверки подготовки 2.1.1: Go race/coverage **80.8%**, vet PASS; legacy Node **3/3**; React **58/58**, statements **90.54%**, branches **85.84%**, functions **89.90%**, lines **92.08%**; frontend build, Docker image и изолированная интеграция PASS. Подробности: [ревью](docs/reviews/release-2.1.1-review.md), [тестирование](docs/reviews/release-2.1.1-testing.md). Git-публикация и обновление рабочего Compose выполняются отдельным этапом; тестовая сборка не подтверждает их завершение.
+
+Ниже сохранены инструкции для **legacy-версии** `cmd/spotter`; её порт и способ доступа к macOS отличаются от v2.
+
 Personal Spotter — локальный персональный ассистент для macOS, который агрегирует данные из Calendar, Reminders, Mail и Notes, формирует ежедневную сводку и отображает актуальную информацию через локальный веб-интерфейс в режиме реального времени.
 
-План развития существующего решения: [единое ТЗ на доработку, тестирование и развёртывание](docs/development-spec.md). Документ связывает действующие спецификации, задаёт пакеты работ для параллельной разработки и критерии приёмки; целевая архитектура ещё не является текущей реализацией.
+План развития существующего решения: [единое ТЗ на доработку, тестирование и развёртывание](docs/development-spec.md). Документ связывает действующие спецификации, задаёт пакеты работ для параллельной разработки и критерии приёмки; полная приёмка целевой архитектуры ещё не завершена, фактически реализованный объём указан в отчёте доставки.
 
 The server runs locally and reads macOS sources through AppleScript without screenshots or OCR. Optional recommendations use the configured model endpoint: the checked-in configuration targets local Ollama; selecting a hosted endpoint sends source content to that service. Workspace decisions and sleep aggregates remain separate from model inputs.
 
 ## Requirements
 
 - macOS with Calendar, Reminders, Mail and Notes.
-- Go 1.22 or newer.
+- Go 1.23 or newer (current `go.mod`).
 - `osascript`, available on macOS by default.
 - Node.js 18 or newer for frontend regression tests only; no npm dependencies are required.
 
@@ -48,20 +86,9 @@ go run ./cmd/spotter --port 8081
 действует последнее значение. Для примера выше откройте http://127.0.0.1:8081.
 
 
-## Docker
+## Docker для legacy
 
-Docker is useful for checking the web server, SSE stream, planner and error handling. It cannot collect real macOS Calendar, Reminders, Mail or Notes data because containers do not have access to the host macOS Automation APIs or `osascript`.
-
-```bash
-docker build -t personal-spotter:local .
-docker run --rm --name personal-spotter -p 127.0.0.1:8080:8080 personal-spotter:local
-```
-
-Open:
-
-```text
-http://localhost:8080
-```
+Текущий Dockerfile запускает v2 `cmd/spotter-server`, а не legacy `cmd/spotter`. Используйте Compose-инструкцию выше: отдельный `docker run` без PostgreSQL, NATS и MinIO не запускает рабочий стенд v2. Реальные источники macOS читает native helper вне контейнеров.
 
 ## Configuration
 
@@ -208,7 +235,7 @@ launchctl unload ~/Library/LaunchAgents/com.personal-spotter.plist
 - AppleScript access depends on macOS permissions and app availability.
 - Mail previews are intentionally empty in the MVP to avoid reading full message bodies.
 - The Mail dashboard shows unread messages only.
-- Spotter recommendations are optional and use the configured model API when `openai.enabled` is true and `OPENAI_API_KEY` is set.
+- Personal Spotter recommendations are optional and use the configured model API when `openai.enabled` is true and `OPENAI_API_KEY` is set.
 - The config parser supports the simple nested YAML shape used by `config.yaml`.
 - No write operations are implemented for Calendar, Reminders, Mail or Notes.
 
@@ -376,11 +403,11 @@ on the iPhone. Both devices need the same iCloud account and iCloud Drive enable
 The phone-side Shortcut and Health permissions must be configured on the device;
 this repository does not claim they are already installed or authorized.
 
-Spotter watches the file every minute while running. Default Mac path:
+Personal Spotter watches the file every minute while running. Default Mac path:
 `~/Library/Mobile Documents/com~apple~CloudDocs/Spotter/health.json`.
 Override with `SPOTTER_HEALTH_FILE` in `.env` or process environment, then restart.
 The desktop server does not need a public or LAN health-ingestion endpoint.
-Docker needs an explicit read-only host folder mount and the corresponding variable.
+In v2 the native helper reads the configured health file outside Docker and sends aggregates only after explicit consent. The legacy file bridge instructions above apply to `cmd/spotter`.
 
 JSON contract (ISO 8601 timestamps with timezone, example data only):
 

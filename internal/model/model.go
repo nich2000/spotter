@@ -3,12 +3,16 @@ package model
 import "time"
 
 type CalendarEvent struct {
-	Title    string    `json:"title"`
-	Start    time.Time `json:"start"`
-	End      time.Time `json:"end"`
-	Location string    `json:"location,omitempty"`
-	Calendar string    `json:"calendar,omitempty"`
-	Notes    string    `json:"notes,omitempty"`
+	ID           string    `json:"id,omitempty"`
+	AllDay       bool      `json:"allDay,omitempty"`
+	Availability string    `json:"availability,omitempty"`
+	Cancelled    bool      `json:"cancelled,omitempty"`
+	Title        string    `json:"title"`
+	Start        time.Time `json:"start"`
+	End          time.Time `json:"end"`
+	Location     string    `json:"location,omitempty"`
+	Calendar     string    `json:"calendar,omitempty"`
+	Notes        string    `json:"notes,omitempty"`
 }
 
 type Reminder struct {

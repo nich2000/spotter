@@ -1,0 +1,15 @@
+CREATE TABLE IF NOT EXISTS schema_version (version integer PRIMARY KEY);
+INSERT INTO schema_version VALUES (2) ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS workspace (id integer PRIMARY KEY CHECK(id=1), state jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS operations (id text PRIMARY KEY, hash text NOT NULL, receipt jsonb NOT NULL);
+CREATE TABLE IF NOT EXISTS owner (id integer PRIMARY KEY CHECK(id=1), password_hash text NOT NULL);
+CREATE TABLE IF NOT EXISTS sessions (token_hash text PRIMARY KEY, created_at timestamptz NOT NULL DEFAULT now(), touched_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS enrollments (code_hash text PRIMARY KEY, expires_at timestamptz NOT NULL);
+CREATE TABLE IF NOT EXISTS devices (id text PRIMARY KEY, name text NOT NULL, token_hash text NOT NULL UNIQUE, active boolean NOT NULL DEFAULT true, created_at timestamptz NOT NULL DEFAULT now(), last_seen timestamptz);
+CREATE TABLE IF NOT EXISTS consents (category text PRIMARY KEY, enabled boolean NOT NULL DEFAULT false, generation bigint NOT NULL DEFAULT 1);
+INSERT INTO consents(category) VALUES ('health'),('diary') ON CONFLICT DO NOTHING;
+CREATE TABLE IF NOT EXISTS batches (id text PRIMARY KEY, device_id text NOT NULL REFERENCES devices(id), hash text NOT NULL, state text NOT NULL, error text, received_at timestamptz NOT NULL DEFAULT now(), applied_at timestamptz);
+CREATE TABLE IF NOT EXISTS sources (device_id text NOT NULL REFERENCES devices(id), name text NOT NULL, sequence bigint NOT NULL, snapshot jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now(), PRIMARY KEY(device_id,name));
+CREATE TABLE IF NOT EXISTS read_snapshots (token text PRIMARY KEY, state jsonb NOT NULL, expires_at timestamptz NOT NULL DEFAULT now()+interval '10 minutes');
+CREATE TABLE IF NOT EXISTS files (id text PRIMARY KEY, name text NOT NULL, size bigint NOT NULL, checksum text NOT NULL, status text NOT NULL, created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS outbox (id bigserial PRIMARY KEY, revision bigint NOT NULL, created_at timestamptz NOT NULL DEFAULT now(), published boolean NOT NULL DEFAULT false);

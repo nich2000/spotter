@@ -2,8 +2,10 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"log/slog"
+	"spotter/internal/audit"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -111,4 +113,60 @@ func TestRefreshCollectsSourcesInParallelBeforePlanning(t *testing.T) {
 			t.Fatalf("source[%d] = %s, want %s", i, source.Name, items[i].Name())
 		}
 	}
+}
+
+type failingStore struct {
+	state model.AppState
+	fail  bool
+}
+
+func (s *failingStore) Load(context.Context) (model.AppState, error) {
+	if s.fail {
+		return model.AppState{}, fmt.Errorf("load")
+	}
+	return s.state, nil
+}
+func (s *failingStore) Save(context.Context, model.AppState) error {
+	if s.fail {
+		return fmt.Errorf("save")
+	}
+	return nil
+}
+
+type failingPlanner struct{ fail bool }
+
+func (p failingPlanner) Generate(context.Context, model.AppState) (model.DailyPlan, error) {
+	if p.fail {
+		return model.DailyPlan{}, fmt.Errorf("model offline")
+	}
+	return model.DailyPlan{Summary: "result"}, nil
+}
+
+type failingAudit struct{}
+
+func (failingAudit) SaveRefresh(context.Context, audit.RefreshRecord) error {
+	return fmt.Errorf("audit unavailable")
+}
+func TestLoadGenerateAndFailures(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	store := &failingStore{state: model.AppState{GeneratedAt: time.Now(), Plan: model.DailyPlan{Summary: "loaded"}}}
+	a := New(logger, nil, failingPlanner{}, store, failingAudit{}, sse.NewBroker(logger))
+	a.Load(context.Background())
+	if a.State().Plan.Summary != "loaded" {
+		t.Fatal("not loaded")
+	}
+	a.GeneratePlan(context.Background())
+	if a.State().Plan.Summary != "result" {
+		t.Fatal("no plan")
+	}
+	store.fail = true
+	a.Load(context.Background())
+	a.GeneratePlan(context.Background())
+	a.planner = failingPlanner{fail: true}
+	a.GeneratePlan(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	a.GeneratePlan(ctx)
+	a.Refresh(ctx)
+	a.Refresh(context.Background())
 }

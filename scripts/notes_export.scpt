@@ -37,12 +37,11 @@ on trimText(value)
 end trimText
 
 on isoDate(value)
-	set totalSeconds to time of value
-	set hourValue to totalSeconds div 3600
-	set minuteValue to (totalSeconds mod 3600) div 60
-	set secondValue to totalSeconds mod 60
-	set timezoneValue to "+03:00"
-	return (year of value as text) & "-" & my twoDigits(month of value as integer) & "-" & my twoDigits(day of value) & "T" & my twoDigits(hourValue) & ":" & my twoDigits(minuteValue) & ":" & my twoDigits(secondValue) & timezoneValue
+	set formatter to current application's NSDateFormatter's alloc()'s init()
+	formatter's setLocale:(current application's NSLocale's localeWithLocaleIdentifier:"en_US_POSIX")
+	formatter's setDateFormat:"yyyy-MM-dd'T'HH:mm:ssXXX"
+	formatter's setTimeZone:(current application's NSTimeZone's localTimeZone())
+	return (formatter's stringFromDate:value) as text
 end isoDate
 
 on twoDigits(value)

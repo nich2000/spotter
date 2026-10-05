@@ -1,4 +1,4 @@
-# Спецификация API Spotter
+# Спецификация API Personal Spotter
 
 Дата: 1 октября 2026 года. Версия: 1. Статус: целевой контракт для разработки и согласования, только документация. Описанные маршруты `/api/v2` пока не реализованы.
 
@@ -155,7 +155,7 @@ API реализует [Inbox](inbox-spec.md), [общую карточку](tas
 
 ## 5. Задачи, карточка и предложения
 
-`CardPatch` допускает title, description, resume, projectId, context, importance, urgency, priorityNote, complexity, multiDay, estimateMinutes, remainingMinutes, deadline, scheduled, inboxAvailableAt. Состояние и разбор — отдельные явные структуры команды, чтобы произвольный PATCH не обходил побочные эффекты.
+`CardPatch` допускает title, description, resume, projectId, context, importance, urgency, priorityNote, complexity, multiDay, estimateMinutes, remainingMinutes, deadline, scheduled, inboxAvailableAt, relatedTaskIds. Состояние и разбор — отдельные явные структуры команды, чтобы произвольный PATCH не обходил побочные эффекты.
 
 `Deadline/CheckAt`: null либо `{kind:"date",date,zone}` / `{kind:"instant",at,zone}`. `Scheduled`: null либо `{startAt,endAt:null|Instant,zone,localStart,localEnd:null|string,offsetChoice:null|"earlier"|"later"}`. localStart/localEnd — местные `YYYY-MM-DDTHH:mm:ss` без offset; сервер проверяет соответствие Instant и zone. Несуществующее местное время — 422, неоднозначное без выбора — 422 с двумя вариантами. Date-only срок истекает на начале следующих местных суток; checkAt только датой становится актуальным с начала указанной местной даты. Эти две границы не взаимозаменяемы. Выход scheduled за deadline сохраняется как warning по модели; если выбранная R11 требует блокировки, это отдельная публикуемая политика.
 
@@ -392,3 +392,23 @@ data: {"sourceSnapshotId":"src-20","connectionIds":["calendar-local"]}
 10. Чужой Origin/нет header/неверный JSON/oversize отвергаются; SSE reset восстанавливает срез; старый клиент не пишет несовместимую схему.
 
 Документ проверен в двух проходах: соответствие сущностей/операций новой модели и спецификациям блоков; затем сквозные границы atomic save, повторов/конфликтов, unknown, времени, proposals и совместимости. Это проверка документации, не выполненные HTTP/Go/browser-тесты и не подтверждение реализации endpoints.
+
+
+### Локальное ручное планирование (2026-10-05)
+
+Расширение Scheduled: `null | {kind:"date_range",startDate,endDate:null|Date,zone} | {kind:"timed",startAt,endAt:null|Instant,zone,localStart?,localEnd?,offsetChoice?}`.
+Старый объект без kind принимается как timed. Для date_range конец включён; null означает только начало. Для timed конец строго позже начала. Instant без localStart/localEnd уже задаёт конкретное вхождение времени; если местное время передано, сервер проверяет согласованность с поясом, а при DST fold — offsetChoice и выбранный Instant.
+
+`relatedTaskIds:string[]` в CardPatch заменяет список связей задачи; ссылки на себя, отсутствующие задачи и дубликаты отклоняются. Сервер симметрично обновляет вторую сторону с entityVersion и событием task.links в той же транзакции. Пустой список удаляет связи, история сохраняется.
+
+Чтение диаграммы использует существующий `GET /api/v2/workspace` с полной коллекцией задач (включая строки за пределами периода); отрисовка пересечения и фильтр потомков выполняются над одним снимком. Сохранение: `POST /api/v2/workspace/commands`, команда task.save, patch.scheduled/deadline/relatedTaskIds. Очистка scheduled не очищает deadline и не меняет план дня. Повторяется весь первоначальный envelope.
+
+Capabilities: features.planning=true; features.planningPolicy={scheduledKinds:["date_range","timed"],deadline:"warn",completed:"linked_only",dateRangeEnd:"inclusive",startOnly:"marker"}. Receipt содержит warning SCHEDULE_EXCEEDS_DEADLINE при выходе интервала за срок. Глобальные автоматические политики R5/R11/R12 остаются отдельными решениями.
+
+### Календарь — реализовано в 2.1.0
+
+`GET /workspace` дополнительно возвращает workBlocks[] и calendarSources[]. `POST /calendar/proposal` (тот же auth/origin-контроль) — чистое предложение без записи, ответ {blocks,workspaceRevision,payload}.
+
+Ручной запрос: {taskId,startAt,minutes,zone,pinned?,automatic?}. automatic=true подбирает свободное время выбранного дня. Распределение выбранных задач: {taskIds,fromDate,toDate,zone}, обе даты включены, максимум 31 день и 50 выбранных задач. Сначала дедлайн, затем важность; неизвестная оценка/дефицит дают явную ошибку без частичной записи. Существующие назначения не перемещаются.
+
+Команды общего атомарного endpoint: `workblocks.create` (тот же payload), `workblocks.delete` {blockId}, `workblocks.pin` {blockId,pinned}. Общие operationId/expectedRevision обеспечивают идемпотентность и конфликт версий. Подтверждение заново строит и проверяет предложение под блокировкой workspace. Внешние снимки календаря также меняют revision. CALENDAR_STALE означает отсутствие успешного свежего покрытия (24 часа и границы окна); без подключённого источника ручное назначение разрешено с предупреждением, автоматическое — нет. Рабочий бюджет: 80% окна после объединения фиксированной занятости; работа и перерывы должны в него помещаться.

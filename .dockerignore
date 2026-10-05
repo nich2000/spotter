@@ -4,3 +4,10 @@ data
 spotter
 assistant
 *.log
+.env
+.env.docker
+frontend/node_modules
+frontend/dist
+frontend/coverage
+
+frontend/.cache

@@ -31,13 +31,8 @@ func (b *Broker) Publish(v any) error {
 
 	b.mu.Lock()
 	b.latest = payload
-	clients := make([]chan []byte, 0, len(b.clients))
+	defer b.mu.Unlock()
 	for client := range b.clients {
-		clients = append(clients, client)
-	}
-	b.mu.Unlock()
-
-	for _, client := range clients {
 		select {
 		case client <- payload:
 		default:

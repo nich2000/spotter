@@ -1,4 +1,4 @@
-# Спецификация модели данных Spotter
+# Спецификация модели данных Personal Spotter
 
 Дата: 1 октября 2026 года. Версия документа: 1. Статус: целевая модель для разработки; программная реализация и миграция не выполнялись.
 
@@ -83,7 +83,8 @@ erDiagram
 | `estimateMinutes`, `remainingMinutes` | Общая оценка int ≥1 либо null; остаток int ≥0 либо null. Нулевой остаток не завершает задачу |
 | `waitingOn`, `backgroundReason`, `checkAt` | Отдельные поля текущего ожидания/фона; checkAt — null либо `{kind:date,date,zone}` / `{kind:instant,at,zone}` |
 | `deadline` | null либо `{kind:date,date,zone}` / `{kind:instant,at,zone}` |
-| `scheduled` | null либо `{startAt,endAt:null\|Instant,zone,localStart,localEnd,offsetChoice}` |
+| `scheduled` | null, `{kind:"date_range",startDate,endDate:null\|Date,zone}` или `{kind:"timed",startAt,endAt:null\|Instant,zone,localStart?,localEnd?,offsetChoice?}`; старый объект без kind принимается как timed |
+| `relatedTaskIds` | Массив ID явно связанных задач; двусторонний, без повторов и ссылки на себя; обе стороны обновляются атомарно |
 | `inboxAvailableAt` | Instant\|null; отдельный момент появления, не дедлайн |
 | `completionEventId` | FK последнего действительного завершения либо null |
 | `migrationBaselineId` | ID импортного baseline либо null; позволяет отличить legacy done без события завершения |
@@ -266,3 +267,9 @@ Date-only дедлайн истекает на исключённой грани
 `InboxProjection` содержит candidates отдельно от occurrences, состояние источников, счётчики категорий и стабильный порядок. `WorkdayProjection` содержит текущий план и snapshot отдельно, focus, timer, метрики времени и завершений, бюджет и проверки всех открытых ожиданий/фона, включая отсутствующие в плане. Порядок строк задаётся position либо стабильной парой (createdAt,id) с отдельным порядком миграционных записей без createdAt; клиентский порядок не создаёт новую бизнес-сущность.
 
 Материализованные сводки не источник истины: их можно перестроить по фактам, истории и coverage. Пропущенные/сбойные расчёты не превращаются в численные нули. Физические индексы: task(projectId,lifecycleState), task(reviewRequired,importance,urgency), task(inboxAvailableAt), task(checkAt), event(occurrenceId,sequence), event(occurredAt,sequence), plan(date,dayVersion), interval(startAt,endAt), measurement(dayRecordId,kind,measuredAt), candidate(dedupKey/aliases), operation(operationId). Уникальность правила, активного плана и открытого интервала обеспечивается хранилищем либо единственной сериализованной транзакционной секцией, а не проверкой браузера.
+
+### Реализация календаря 2.1.0 (2026-10-05)
+
+В JSON-состояние workspace добавлены workBlocks (map id → объект) и calendarSources (map source → снимок). Старые состояния без этих полей читаются как пустые, отдельная SQL-миграция не требуется. WorkBlock: id, taskId (для kind=work), kind=work|break, startAt/endAt (UTC), zone, pinned, version, operationId. Рабочие блоки не являются TimeEntry/FocusSession и не меняют DayPlan. При показе загрузки объём одной задачи равен max(PlanItem.allocatedMinutes, сумме её рабочих блоков дня), перерывы не входят в трудоёмкость. Сохранение блоков создаёт отдельные события истории.
+
+Принято пользователем: блоки отдельно от плана дня; отменённые и свободные встречи не занимают время; allDay блокирует только при явном busy; ручной remainingMinutes приоритетен; прогноз повторений не создаётся. В текущем профиле факт работы недоступен, поэтому при отсутствии ручного остатка используется estimateMinutes, без выдуманного учёта сессий. Учитываются уже назначенные будущие блоки. Настройки pomodoroMinutes/BreakMinutes/LongBreakMinutes по умолчанию 25/5/15; workWeek (0=воскресенье), workExceptions (ISO-дата): null=выходной либо {start,end}. По умолчанию пн–пт и общие workStart/workEnd.

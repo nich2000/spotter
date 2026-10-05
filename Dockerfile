@@ -1,23 +1,24 @@
-FROM golang:1.22-alpine AS build
+FROM node:22.19.0-alpine AS frontend
+WORKDIR /src/frontend
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend ./
+RUN npm run build
 
+FROM golang:1.26.3-alpine AS build
 WORKDIR /src
-COPY go.mod ./
+COPY go.mod go.sum ./
+RUN go mod download
 COPY cmd ./cmd
 COPY internal ./internal
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/spotter ./cmd/spotter
+RUN CGO_ENABLED=0 go build -trimpath -o /out/spotter-server ./cmd/spotter-server
 
-FROM alpine:3.20
-
+FROM alpine:3.22
+RUN apk add --no-cache ca-certificates tzdata && addgroup -S spotter && adduser -S -G spotter spotter
 WORKDIR /app
-COPY --from=build /out/spotter /usr/local/bin/spotter
-RUN printf '%s\n' '#!/bin/sh' 'echo "macOS Automation is unavailable in Docker. Run Personal Spotter natively on macOS to use Calendar, Reminders, Mail and Notes." >&2' 'exit 1' > /usr/local/bin/osascript \
-	&& chmod +x /usr/local/bin/osascript
-COPY config.docker.yaml ./config.yaml
-COPY scripts ./scripts
-COPY web ./web
-
-ENV SPOTTER_DOCKER=1
+COPY --from=build /out/spotter-server /usr/local/bin/spotter-server
+COPY --from=frontend /src/frontend/dist ./web
+USER spotter
 EXPOSE 8080
-
-ENTRYPOINT ["/usr/local/bin/spotter"]
-CMD ["-config", "/app/config.yaml"]
+ENTRYPOINT ["spotter-server"]
+CMD ["-role", "api"]
