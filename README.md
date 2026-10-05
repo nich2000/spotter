@@ -34,7 +34,7 @@ docker compose --env-file .env.docker -f compose.yaml -f compose.test.yaml --pro
 
 Интеграционный тест использует отдельную SQL-схему, NATS и S3 bucket; данные владельца не меняет. `docker compose --env-file .env.docker down` останавливает стенд, сохраняя тома. Не добавляйте `-v`, если нужно сохранить данные. `.env.docker` содержит локальные секреты и не входит в Git.
 
-Проверки подготовки 2.1.1: Go race/coverage **80.8%**, vet PASS; legacy Node **3/3**; React **58/58**, statements **90.54%**, branches **85.84%**, functions **89.90%**, lines **92.08%**; frontend build, Docker image и изолированная интеграция PASS. Подробности: [ревью](docs/reviews/release-2.1.1-review.md), [тестирование](docs/reviews/release-2.1.1-testing.md). Git-публикация и обновление рабочего Compose выполняются отдельным этапом; тестовая сборка не подтверждает их завершение.
+Проверки подготовки 2.1.1: Go race/coverage **80.8%**, vet PASS; legacy Node **3/3**; React **58/58**, statements **90.54%**, branches **85.84%**, functions **89.90%**, lines **92.08%**; frontend build, Docker image и изолированная интеграция PASS. Подробности: [ревью](docs/reviews/release-2.1.1-review.md), [тестирование](docs/reviews/release-2.1.1-testing.md). Выпуск опубликован в GitHub с тегом `v2.1.1`; рабочий локальный Compose обновлён. [Подтверждение публикации и развёртывания](docs/reviews/release-2.1.1-deployment.md).
 
 Ниже сохранены инструкции для **legacy-версии** `cmd/spotter`; её порт и способ доступа к macOS отличаются от v2.
 
